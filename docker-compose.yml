@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   video-chef:
-    build: .
+    build:
+      context: .
+      args:
+        RUNTIME: cpu                   # 'cpu' veya 'gpu' (NVIDIA)
     image: video-chef:latest
     container_name: video-chef
     
@@ -14,7 +17,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     
-    # GPU support (NVIDIA)
+    # GPU desteği (NVIDIA)
+    # Bunları uncomment et GPU kullanmak için:
+    # runtime: nvidia
     # deploy:
     #   resources:
     #     reservations:
@@ -22,10 +27,30 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+# GPU versiyonu için ayrı servis (opsiyonel)
+  video-chef-gpu:
+    build:
+      context: .
+      args:
+        RUNTIME: gpu
+    image: video-chef:gpu
+    container_name: video-chef-gpu
+    runtime: nvidia
     
-    # Örnek kullanım:
-    # docker-compose run video-chef \
-    #   --video input/video.mp4 \
-    #   --background input/bg.png \
-    #   --character input/char.png \
-    #   --output output/result.mp4
+    volumes:
+      - ./input:/app/input:ro
+      - ./output:/app/output:rw
+      - ./temp:/app/temp:rw
+    
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NVIDIA_VISIBLE_DEVICES=all
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
