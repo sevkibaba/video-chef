@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  video-chef:
+    build: .
+    image: video-chef:latest
+    container_name: video-chef
+    
+    volumes:
+      - ./input:/app/input:ro          # Input videos + images (read-only)
+      - ./output:/app/output:rw        # Output folder (write)
+      - ./temp:/app/temp:rw            # Temp folder (write)
+    
+    environment:
+      - PYTHONUNBUFFERED=1
+    
+    # GPU support (NVIDIA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    
+    # Örnek kullanım:
+    # docker-compose run video-chef \
+    #   --video input/video.mp4 \
+    #   --background input/bg.png \
+    #   --character input/char.png \
+    #   --output output/result.mp4
