@@ -1,0 +1,23 @@
+# Python dependencies for Video Chef
+
+# Core video processing
+opencv-python>=4.8.0
+ffmpeg-python>=0.2.0
+
+# AI Segmentation (lightweight, small GPU friendly)
+rembg[gpu]>=2.0.50          # Background removal / segmentation
+onnxruntime-gpu>=1.16.0     # rembg GPU backend (hafif)
+
+# Image processing
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Utilities
+tqdm>=4.65.0                # Progress bars
+PyYAML>=6.0                 # Config dosyası
+click>=8.1.0                # CLI arayüzü
+rich>=13.0.0                # Güzel terminal output
+
+# Optional: daha iyi segmentasyon (daha fazla VRAM gerekirse kapat)
+# torch>=2.0.0
+# torchvision>=0.15.0

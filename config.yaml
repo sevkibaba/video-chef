@@ -1,0 +1,25 @@
+video:
+  target_resolution: 720        # 720p - Instagram için yeterli, hafif GPU için ideal
+  target_fps: 30
+  max_duration_seconds: 60
+
+segmentation:
+  model: u2net_human_seg        # Hafif model (~176MB), insanlar için optimize
+  device: cuda                  # cuda / cpu (GPU yoksa cpu yaz)
+  batch_size: 2                 # Az VRAM için 1-2 tut
+
+compositing:
+  blend_mode: seamless          # seamless / hard / soft
+  edge_feather: 5               # Kenar yumuşatma piksel sayısı
+  shadow: false                 # Gölge (daha gerçekçi ama yavaş)
+
+output:
+  format: mp4
+  codec: h264
+  quality: 23                   # CRF değeri: 18=kaliteli, 28=küçük dosya
+  instagram_optimize: true
+
+paths:
+  input_dir: ./input
+  output_dir: ./output
+  temp_dir: ./temp
