@@ -1,23 +1,46 @@
-# Python dependencies for Video Chef
+# Core
+torch>=2.1.0
+torchvision>=0.16.0
 
-# Core video processing
-opencv-python>=4.8.0
-ffmpeg-python>=0.2.0
+# Diffusion stack (ControlNet + IP-Adapter)
+diffusers>=0.27.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
 
-# AI Segmentation (lightweight, small GPU friendly)
-rembg[gpu]>=2.0.50          # Background removal / segmentation
-onnxruntime-gpu>=1.16.0     # rembg GPU backend (hafif)
+# Pose estimation (DWPose via controlnet_aux)
+controlnet-aux>=0.0.9
+
+# Person detection (auto-click for SAM2)
+ultralytics>=8.0.0
+
+# Background removal (rembg — fallback + generated frame cutout)
+rembg[gpu]>=2.0.50
+onnxruntime-gpu>=1.16.0   # for rembg GPU acceleration
+
+# Video I/O
+# ffmpeg must be installed separately:
+#   mac:   brew install ffmpeg
+#   linux: apt install ffmpeg
+#   cloud: conda install -c conda-forge ffmpeg
 
 # Image processing
 Pillow>=10.0.0
 numpy>=1.24.0
+opencv-python>=4.8.0
 
-# Utilities
-tqdm>=4.65.0                # Progress bars
-PyYAML>=6.0                 # Config dosyası
-click>=8.1.0                # CLI arayüzü
-rich>=13.0.0                # Güzel terminal output
+# CLI
+click>=8.1.0
 
-# Optional: daha iyi segmentasyon (daha fazla VRAM gerekirse kapat)
-# torch>=2.0.0
-# torchvision>=0.15.0
+# Progress bars
+tqdm>=4.65.0
+
+# Config
+pyyaml>=6.0
+
+# Optional: SAM2 — install separately:
+# pip install git+https://github.com/facebookresearch/sam2.git
+# Then download checkpoints: bash scripts/download_models.sh
+
+# Optional: mediapipe (fallback pose extractor)
+# mediapipe>=0.10.0

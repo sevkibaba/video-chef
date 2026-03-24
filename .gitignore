@@ -1,17 +1,32 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .env
+
+# Temp processing directories
 temp/
+temp_*/
+temp_v*/
+
+# SAM2 checkpoints (large files — download separately)
+checkpoints/
+
+# Output media
 output/*.mp4
 output/*.mov
+output/logs/
+
+# Input media
 input/*.mp4
 input/*.mov
 input/*.png
 input/*.jpg
 input/*.jpeg
+
+# Build artifacts
 *.egg-info/
 dist/
 build/

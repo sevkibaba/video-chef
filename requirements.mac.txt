@@ -1,0 +1,28 @@
+# Mac CPU-only requirements (lighter than full requirements.txt)
+# No GPU/CUDA packages — torch is installed separately in Dockerfile.mac
+
+# Diffusion stack
+diffusers>=0.27.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+
+# Pose estimation
+controlnet-aux>=0.0.9
+
+# Person detection
+ultralytics>=8.0.0
+
+# Background removal (CPU onnxruntime for Mac Docker)
+rembg>=2.0.50
+onnxruntime>=1.16.0
+
+# Image + video
+Pillow>=10.0.0
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+
+# CLI + utils
+click>=8.1.0
+tqdm>=4.65.0
+pyyaml>=6.0

@@ -1,0 +1,48 @@
+# docker-compose.mac.yml — Mac-optimized compose file (CPU-only)
+#
+# Usage:
+#   docker compose -f docker-compose.mac.yml build
+#   docker compose -f docker-compose.mac.yml run --rm video-chef-mac \
+#     --video input/video.mp4 \
+#     --character input/character.jpg \
+#     --output output/test.mp4 \
+#     --max-frames 5 \
+#     --steps 10 \
+#     --use-rembg \
+#     --device cpu
+
+services:
+
+  video-chef-mac:
+    build:
+      context: .
+      dockerfile: Dockerfile.mac
+    image: video-chef-mac:latest
+    container_name: video-chef-mac
+
+    volumes:
+      # Input files (read-only)
+      - ./input:/app/input:ro
+      # Results (writable)
+      - ./output:/app/output:rw
+      # Temp working dir (writable)
+      - ./temp_pose_transfer:/app/temp_pose_transfer:rw
+      # HuggingFace + Torch model cache — IMPORTANT: persist this across runs.
+      # First run downloads ~5-8GB of models. Subsequent runs reuse them.
+      - ./model_cache:/root/.cache:rw
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=4
+      - HF_HOME=/root/.cache/huggingface
+      - TORCH_HOME=/root/.cache/torch
+
+    # Give Docker enough shared memory for model loading
+    shm_size: '2gb'
+
+    # Resource limits — adjust based on your Mac's RAM
+    # Apple Silicon Macs with 16GB+ RAM can handle this well.
+    deploy:
+      resources:
+        limits:
+          memory: 12g

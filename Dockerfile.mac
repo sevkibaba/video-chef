@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.mac — CPU-only image, optimized for Mac (Apple Silicon + Intel)
+#
+# Notes:
+#   - Docker on Mac has NO GPU access (no CUDA, no Metal/MPS).
+#     Everything runs on CPU. Diffusion will be slow (~5-15 min/frame).
+#   - Use this image to validate the pipeline works correctly with a few frames.
+#   - For real throughput, use cloud GPU (see scripts/setup_cloud.sh).
+#
+# Build:
+#   docker build -f Dockerfile.mac -t video-chef-mac .
+#
+# Run (see docker-compose.mac.yml for the easier way):
+#   docker run --rm \
+#     -v $(pwd)/input:/app/input \
+#     -v $(pwd)/output:/app/output \
+#     -v $(pwd)/.cache:/root/.cache \
+#     video-chef-mac \
+#     --video input/video.mp4 --character input/character.jpg \
+#     --max-frames 5 --steps 10 --use-rembg --device cpu
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+# System deps: ffmpeg + OpenCV requirements
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libgl1 \
+        libglib2.0-0 \
+        libgomp1 \
+        wget \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ── Python dependencies ───────────────────────────────────────────────────────
+# CPU-only PyTorch first (much smaller than CUDA version)
+RUN pip install --no-cache-dir \
+    torch==2.2.0 torchvision==0.17.0 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# All other deps
+COPY requirements.mac.txt .
+RUN pip install --no-cache-dir -r requirements.mac.txt
+
+# ── Application code ──────────────────────────────────────────────────────────
+COPY src/       ./src/
+COPY pipelines/ ./pipelines/
+
+# ── Directories ───────────────────────────────────────────────────────────────
+RUN mkdir -p /app/input /app/output /app/output/logs /app/temp_pose_transfer
+
+# ── Environment ───────────────────────────────────────────────────────────────
+ENV PYTHONUNBUFFERED=1
+ENV OMP_NUM_THREADS=4
+# HuggingFace model cache — mount this volume to persist across runs
+ENV HF_HOME=/root/.cache/huggingface
+ENV TORCH_HOME=/root/.cache/torch
+
+# ── Entrypoint ────────────────────────────────────────────────────────────────
+ENTRYPOINT ["python", "pipelines/pose_transfer_v1.py"]
+CMD ["--help"]
