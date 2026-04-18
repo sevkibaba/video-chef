@@ -1,34 +1,34 @@
-venv/
-.venv/
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .env
+venv/
+.venv/
 
-# Temp processing directories
-temp/
-temp_*/
-temp_v*/
+# Notebook checkpoints
+.ipynb_checkpoints/
 
-# SAM2 checkpoints (large files — download separately)
-checkpoints/
-
-# Output media
-output/*.mp4
-output/*.mov
-output/logs/
-
-# Input media
-input/*.mp4
-input/*.mov
-input/*.png
-input/*.jpg
-input/*.jpeg
-
-# Build artifacts
-*.egg-info/
-dist/
-build/
+# OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Local runtime artifacts (media, weights, outputs)
+inputs/
+outputs/
+checkpoints/
+*.mp4
+*.mov
+*.webm
+*.aac
+*.mp3
+*.wav
+
+# Keep sample assets if you add any under assets/
+!assets/**
+

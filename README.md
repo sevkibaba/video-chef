@@ -1,347 +1,141 @@
-# 🎬 Video Chef v2 — Pose-Guided Character Replacement
+# 🎬 Video Chef
 
-> Replace any person in a video with your character image — keeping the original
-> poses, movement, and background — using open-source AI models running 100% locally
-> or on a cloud GPU.
+Colab-first toolkit for AI video workflows using the open-source **Wan 2.2** model family
+(Apache 2.0).
 
----
+Two notebooks, no local setup required:
 
-## 🏗️ How It Works
-
-```
-Input video + Character JPEG
-        │
-        ▼
-┌─────────────────────────────────────────────────────────┐
-│  STEP 1 │ Extract Frames + Audio (FFmpeg)               │
-├─────────────────────────────────────────────────────────┤
-│  STEP 2 │ Person Tracking (YOLO → SAM2)                 │
-│          YOLO detects person center in frame 0           │
-│          SAM2 tracks them across ALL frames              │
-│          → Per-frame binary masks                        │
-├─────────────────────────────────────────────────────────┤
-│  STEP 3 │ Pose Extraction (DWPose)                       │
-│          Skeleton image per frame                        │
-│          (OpenPose format for ControlNet)                │
-├─────────────────────────────────────────────────────────┤
-│  STEP 4 │ Character Generation (ControlNet + IP-Adapter) │
-│          IP-Adapter: use your JPEG as appearance ref     │
-│          ControlNet: force exact same pose               │
-│          → New frame: your character, original pose      │
-├─────────────────────────────────────────────────────────┤
-│  STEP 5 │ Compositing                                    │
-│          Remove BG from generated frame (rembg)          │
-│          Scale to original person bounding box           │
-│          Paste onto original background                  │
-├─────────────────────────────────────────────────────────┤
-│  STEP 6 │ Video Assembly (FFmpeg + original audio)       │
-└─────────────────────────────────────────────────────────┘
-        │
-        ▼
-Output video.mp4
-```
+| Notebook | What it does | Model | Default GPU |
+|---|---|---|---|
+| [`notebooks/01_text_to_video.ipynb`](notebooks/01_text_to_video.ipynb) | Generate a 5-second video from a text prompt (optionally from an image) | `Wan2.2-TI2V-5B` (default) / `T2V-A14B` | L4 24 GB |
+| [`notebooks/02_character_replace.ipynb`](notebooks/02_character_replace.ipynb) | Replace the person in an input video with your character image, preserving motion + lighting | `Wan2.2-Animate-14B` | L4 24 GB / A100 40 GB |
 
 ---
 
-## 📦 Project Structure
+## 🚀 Quick start (Colab)
+
+1. Open a notebook on Colab:
+   - T2V: https://colab.research.google.com/github/sevkibaba/video-chef/blob/main/notebooks/01_text_to_video.ipynb
+   - Character replace: https://colab.research.google.com/github/sevkibaba/video-chef/blob/main/notebooks/02_character_replace.ipynb
+2. **Runtime → Change runtime type → GPU → L4** (or A100 if you have Pro+).
+3. (Character replace only) put your inputs in `MyDrive/Wan-Inputs/` — see [Drive layout](#-google-drive-layout--inputs) below.
+4. Run the cells top to bottom. First run downloads model weights and caches them to **Google Drive** under `MyDrive/Wan2.2/` — subsequent runs start in seconds.
+5. Outputs are saved to `MyDrive/Wan2.2/outputs/`.
+
+To run from **VS Code** instead of the Colab UI, see [`VSCODE_SETUP.md`](VSCODE_SETUP.md).
+
+---
+
+## 📂 Google Drive layout & inputs
+
+The notebooks use the following structure on your Google Drive. If you have already
+downloaded `Wan2.2-Animate-14B` into `MyDrive/Wan2.2/`, it will be reused — no re-download.
+
+```
+MyDrive/
+├── Wan2.2/                                   ← weights root (auto-created / reused)
+│   ├── Wan2.2-Animate-14B/                   ← ~30 GB, used by notebook 02
+│   │   └── process_checkpoint/               ← required sub-folder for preprocessing
+│   ├── Wan2.2-TI2V-5B/                       ← ~10 GB, used by notebook 01 (default)
+│   ├── Wan2.2-T2V-A14B/                      ← ~28 GB, used by notebook 01 (optional, A100)
+│   └── outputs/                              ← generated .mp4 files go here
+│       ├── t2v_TI2V-5B_20260418_153012.mp4
+│       └── replace_20260418_161245.mp4
+│
+└── Wan-Inputs/                               ← ONLY for notebook 02 (character replace)
+    ├── video.mp4                             ← the source video (the person to replace)
+    └── character.jpg                         ← the new character to put into the video
+```
+
+### Input files for notebook 02 (character replacement)
+
+Place **exactly two files** in `MyDrive/Wan-Inputs/`:
+
+| File | Required name | Format | Notes |
+|---|---|---|---|
+| Source video | any `*.mp4` (e.g. `video.mp4`) | MP4, H.264 | 5–15 seconds recommended. Must clearly show the person you want to replace. |
+| Character image | any `*.jpg`, `*.jpeg`, or `*.png` (e.g. `character.jpg`) | JPEG/PNG | Full-body or upper-body. Clean background preferred. Single person. |
+
+The notebook auto-picks the **first** `.mp4` and the **first** image it finds in that folder.
+If you keep multiple videos/images in there, either (a) pick specific paths by filling in
+`VIDEO_PATH` and `IMAGE_PATH` in cell 4, or (b) make sure the intended files sort first
+alphabetically.
+
+### Notebook 01 (text-to-video) takes no input files
+
+It only needs a text prompt (edited in cell 4 of the notebook). No Drive inputs required.
+
+### Re-using an existing download
+
+If `MyDrive/Wan2.2/Wan2.2-Animate-14B/` already exists with the full weights (your case),
+cell 3 of notebook 02 will detect it and **skip the download** — `huggingface_hub.snapshot_download`
+verifies existing files and only fetches what's missing. Same for `TI2V-5B` / `T2V-A14B` in notebook 01.
+
+---
+
+## 💻 GPU / tier compatibility
+
+Pay-as-you-go Colab gives you T4, **L4**, and (rarely) A100 40GB. H100 and A100 80GB are
+Colab Enterprise only.
+
+| Task | T4 16GB | L4 24GB | A100 40GB |
+|---|---|---|---|
+| T2V — `TI2V-5B` (720p @ 24fps) | ❌ | ✅ default, ~9 min / 5s | ✅ fastest |
+| T2V — `T2V-A14B` MoE | ❌ | ⚠️ OOM even with offload | ✅ with `--offload_model True` |
+| Character replace — `Animate-14B` | ❌ | ⚠️ slow (~25–40 min / clip) | ✅ recommended |
+
+Both notebooks set the correct `--offload_model True --convert_model_dtype --t5_cpu` flags
+automatically based on the selected GPU.
+
+---
+
+## 🤖 Why Wan 2.2?
+
+After evaluating current (April 2026) open-source options, Wan 2.2 is the best fit because:
+
+- **T2V quality** — `T2V-A14B` (MoE, 27B total / 14B active) is competitive with closed Veo3/PixVerse V5 and runs locally.
+- **Efficient variant** — `TI2V-5B` with 16×16×4 VAE compression is one of the fastest open 720p@24fps models and fits in 24 GB.
+- **Unified character replacement** — `Animate-14B` handles both "animate a still image" and "replace character in video" with the same weights, plus a Relighting LoRA for scene-consistent lighting.
+- **Apache 2.0** license, actively maintained by Alibaba Tongyi Lab.
+- Well-integrated with Diffusers and ComfyUI if you later want to switch runtime.
+
+### Other open-source models considered (and why not defaulted)
+
+| Model | Strength | Why not default |
+|---|---|---|
+| HunyuanVideo 13B (Tencent) | Sharp textures, strong T2V | Needs ≥24 GB FP8, ≥40 GB FP16 — comparable to Wan T2V-A14B but without the character-replacement counterpart |
+| LTX-Video / LTX-2 (Lightricks) | Fastest open model | Lower visual quality; good for drafting not final |
+| CogVideoX-5B (Zhipu) | Well-supported in Diffusers | Lower resolution (720×480), weaker motion |
+| Mochi 1 (Genmo) | High T2V quality | 24 GB minimum, 480p only in practice |
+| Allegro (rhymes-ai) | 9 GB with CPU offload | Quality behind Wan 2.2 |
+| Alice 14B (Mirage) | 4-step inference, 7× faster | New; less tooling around it |
+| LongCat-Video (Meituan) | Long-form video | Same VRAM class as Wan, newer / less validated |
+| AnimateAnyone / MimicMotion / Champ / EchoMimicV2 | Pose-driven character animation | All superseded by Wan-Animate per their own authors |
+| SwapAnyone (PKU) | Purpose-built person swap | Narrower scope than Wan-Animate; good secondary option |
+| Wan 2.5 / 2.6, Sora 2, Veo 3, Kling | Higher quality | **Closed source / API only** — not runnable on Colab |
+
+---
+
+## 📁 Repo structure
 
 ```
 video-chef/
-├── pipelines/
-│   └── pose_transfer_v1.py     ← Main pipeline (run this)
-│
-├── src/
-│   ├── video_io.py             ← FFmpeg wrapper
-│   ├── person_tracker.py       ← SAM2 + YOLO auto-detect
-│   ├── pose_extractor.py       ← DWPose skeleton extraction
-│   ├── character_generator.py  ← ControlNet + IP-Adapter
-│   └── compositor_v2.py        ← Composite char onto BG
-│
-├── scripts/
-│   ├── setup_cloud.sh          ← One-shot cloud GPU setup
-│   └── download_models.sh      ← Download SAM2 checkpoints
-│
-├── input/                      ← Put your files here
-│   ├── video.mp4
-│   └── character.jpg
-│
-├── output/                     ← Results go here
-├── checkpoints/                ← SAM2 model weights
-└── requirements.txt
+├── notebooks/
+│   ├── 01_text_to_video.ipynb       # Wan 2.2 TI2V-5B / T2V-A14B
+│   └── 02_character_replace.ipynb   # Wan 2.2 Animate-14B (replace mode)
+├── README.md
+├── VSCODE_SETUP.md                  # Running notebooks from VS Code
+└── .gitignore
 ```
 
----
-
-## 🚀 Setup
-
-### 🍎 Running on Mac
-
-> **Three ways to run on Mac — choose based on your goal:**
-
-| Mode | What it is | Speed | Good for |
-|---|---|---|---|
-| **Docker (CPU)** | Pipeline in a container, CPU only | 🐢 Very slow | Verifying the pipeline works |
-| **Native Python + MPS** | Python directly on Mac, Metal GPU | 🐇 Medium | Apple Silicon M1/M2/M3 |
-| **Cloud GPU** | SSH into RunPod/vast.ai | 🚀 Fast | Real results |
+No local Python package, no Docker, no src/ code — every step runs inside the notebook
+on a Colab GPU against the upstream `github.com/Wan-Video/Wan2.2` repo.
 
 ---
 
-#### Option A — Docker on Mac (CPU, for testing only)
+## 🔗 Upstream
 
-> ⚠️ Docker on Mac has **no GPU access** (no CUDA, no Metal). Everything runs on CPU.
-> Expect ~5–15 minutes per frame. Use `--max-frames 5` to validate the pipeline works, then switch to cloud or native Python for real processing.
+- Wan 2.2 code: https://github.com/Wan-Video/Wan2.2
+- Weights: https://huggingface.co/Wan-AI
+- License: Apache 2.0
 
-**Prerequisites:** [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/) — give it at least 8GB RAM in Settings → Resources.
-
-```bash
-# 1. Build the Mac image (CPU-only, ~first build takes 5-10 min)
-docker compose -f docker-compose.mac.yml build
-
-# 2. Put your files in input/
-cp /path/to/your/video.mp4      input/video.mp4
-cp /path/to/your/character.jpg  input/character.jpg
-
-# 3. Run a quick 5-frame test (validates the whole pipeline)
-docker compose -f docker-compose.mac.yml run --rm video-chef-mac \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/test.mp4 \
-  --max-frames 5 \
-  --steps 10 \
-  --use-rembg \
-  --device cpu
-
-# Result will be at: output/test.mp4
-```
-
-> **Note:** The first run downloads ~5–8GB of models (SD1.5, ControlNet, IP-Adapter).
-> These are cached in `./model_cache/` — subsequent runs start instantly.
-
----
-
-#### Option B — Native Python on Mac (Apple Silicon, recommended)
-
-This runs **outside Docker**, using MPS (Metal) which is ~3–5× faster than CPU on M1/M2/M3.
-
-```bash
-# 1. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 2. Install CPU/MPS PyTorch (no CUDA needed)
-pip install torch torchvision
-
-# 3. Install dependencies
-pip install -r requirements.mac.txt
-
-# 4. Install FFmpeg
-brew install ffmpeg
-
-# 5. Run (device auto-detects MPS on Apple Silicon)
-python pipelines/pose_transfer_v1.py \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/result.mp4 \
-  --backend sd15 \
-  --max-frames 30 \
-  --use-rembg
-```
-
-> MPS is **automatically detected** — no `--device mps` flag needed (it's the default on Apple Silicon).
-
----
-
-#### Mac Performance Guide
-
-| Mac | SD1.5, 25 steps | Est. per frame |
-|---|---|---|
-| M1 / M2 (8GB RAM) | CPU only | ~8–12 min |
-| M1 Pro / M2 Pro (16GB RAM) | MPS | ~3–5 min |
-| M1 Max / M2 Max / M3 Max (32GB RAM) | MPS | ~1–2 min |
-| M4 Max (48GB RAM) | MPS | ~30–60 sec |
-
-**For a 30s video at 30fps = 900 frames:**
-- M2 Pro native (MPS): ~45–75 hours 😅 — use cloud GPU for real videos
-- Use Mac to **test 5–30 frames**, then push to cloud for full processing
-
----
-
-### Local Machine (Linux + NVIDIA GPU)
-
-```bash
-# 1. Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-
-# 2. Install PyTorch (adjust CUDA version if needed)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
-# 3. Install all other dependencies
-pip install -r requirements.txt
-
-# 4. Install SAM2
-pip install git+https://github.com/facebookresearch/sam2.git
-
-# 5. Download SAM2 checkpoints
-bash scripts/download_models.sh
-
-# 6. Install FFmpeg (if not already installed)
-# Mac:   brew install ffmpeg
-# Linux: sudo apt install ffmpeg
-```
-
-### Cloud GPU (RunPod / vast.ai / Lambda Labs)
-
-```bash
-# Clone the repo
-git clone https://github.com/sevkibaba/video-chef.git
-cd video-chef
-
-# Run setup script (installs everything automatically)
-bash scripts/setup_cloud.sh
-```
-
-> Recommended cloud instance: **A100 40GB** or **H100 80GB**
-> A100 80GB can process ~1min of video in ~20 minutes.
-
----
-
-## 🎬 Usage
-
-### Basic (SD1.5 — works on 8GB VRAM)
-
-```bash
-python pipelines/pose_transfer_v1.py \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/result.mp4 \
-  --backend sd15 \
-  --device cuda
-```
-
-### High Quality (SDXL — recommended on cloud A100)
-
-```bash
-python pipelines/pose_transfer_v1.py \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/result.mp4 \
-  --backend sdxl \
-  --device cuda
-```
-
-### Test Run (first 30 frames only)
-
-```bash
-python pipelines/pose_transfer_v1.py \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/test.mp4 \
-  --max-frames 30 \
-  --keep-temp
-```
-
-### No SAM2 (fallback mode with rembg only)
-
-```bash
-python pipelines/pose_transfer_v1.py \
-  --video input/video.mp4 \
-  --character input/character.jpg \
-  --output output/result.mp4 \
-  --use-rembg
-```
-
----
-
-## ⚙️ All Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--video` | required | Input video path |
-| `--character` | required | Character JPEG/PNG |
-| `--output` | `output/result.mp4` | Output video path |
-| `--backend` | `sd15` | `sd15` (faster) or `sdxl` (better) |
-| `--device` | `cuda` | `cuda` or `cpu` |
-| `--max-frames` | all | Limit frames (for testing) |
-| `--ip-scale` | `0.7` | Character appearance strength (0–1) |
-| `--controlnet-scale` | `0.9` | Pose adherence strength (0–1) |
-| `--steps` | `25` | Diffusion inference steps |
-| `--sam2-model` | `large` | SAM2 size: `large`, `base`, `small`, `tiny` |
-| `--use-rembg` | off | Use rembg instead of SAM2 |
-| `--keep-temp` | off | Keep intermediate files for debugging |
-| `--prompt` | see below | Positive text prompt for generation |
-
-**Default prompt:**
-```
-a person, full body, photorealistic, detailed, sharp
-```
-
----
-
-## 🔧 Tuning Tips
-
-### Character looks too different from the JPEG?
-Increase `--ip-scale` (e.g., `0.85`)
-
-### Character pose doesn't match the video?
-Increase `--controlnet-scale` (e.g., `0.95`)
-
-### Compositing looks unnatural (hard edges)?
-This is controlled in `compositor_v2.py` → `edge_feather` parameter (default: 8px).
-
-### Temporal flickering between frames?
-The pipeline uses a fixed seed (`--seed` not exposed in CLI yet but set in `CharacterGenerator`).
-For smoother results, try `AnimateDiff` as a future upgrade.
-
-### Character too big/small in the frame?
-This is driven by the SAM2 mask bounding box. If the mask is wrong, try:
-- Using `--sam2-model large` for better tracking
-- Or provide a manual `click_point` in `person_tracker.py`
-
----
-
-## 📊 Performance Estimates
-
-| Machine | Backend | 30s video @ 30fps | Est. Time |
-|---------|---------|-------------------|-----------|
-| RTX 3080 (10GB) | SD1.5 | 900 frames | ~45 min |
-| RTX 4090 (24GB) | SDXL | 900 frames | ~30 min |
-| A100 40GB | SDXL | 900 frames | ~15 min |
-| A100 80GB | SDXL | 900 frames | ~10 min |
-
-> Tip: Use `--max-frames 30` first to validate quality before running the full video.
-
----
-
-## 🤖 Models Used
-
-| Model | Purpose | Size | License |
-|-------|---------|------|---------|
-| YOLOv8n | Auto-detect person in frame 0 | ~6MB | AGPL-3.0 |
-| SAM2 Large | Track person across video | ~900MB | Apache 2.0 |
-| DWPose | Skeleton extraction | ~400MB | Apache 2.0 |
-| ControlNet OpenPose (SD1.5) | Pose-conditioned generation | ~1.4GB | OpenRAIL-M |
-| IP-Adapter (SD1.5) | Appearance from JPEG | ~300MB | Apache 2.0 |
-| SD1.5 | Base diffusion model | ~4GB | OpenRAIL-M |
-| rembg (u2net_human_seg) | BG removal from generated frames | ~176MB | MIT |
-
-> All models download automatically on first run (via HuggingFace Hub / ultralytics).
-> Only SAM2 requires a manual checkpoint download (see setup above).
-
----
-
-## 🗺️ Roadmap
-
-- [x] SAM2 person tracking
-- [x] DWPose skeleton extraction
-- [x] ControlNet + IP-Adapter generation
-- [x] Smart compositing with bounding box alignment
-- [ ] Temporal consistency (AnimateDiff / frame interpolation)
-- [ ] 3D model support (Blender render → IP-Adapter reference)
-- [ ] Lighting adaptation (match character lighting to scene)
-- [ ] Batch processing (multiple videos)
-- [ ] GPU memory optimization (xformers, attention slicing)
-
----
-
-*Video Chef v2 — Cook your videos with AI 🍳*
