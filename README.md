@@ -7,7 +7,7 @@ Two notebooks, no local setup required:
 
 | Notebook | What it does | Model | Default GPU |
 |---|---|---|---|
-| [`notebooks/01_text_to_video.ipynb`](notebooks/01_text_to_video.ipynb) | Generate a 5-second video from a text prompt (optionally from an image) | `Wan2.2-TI2V-5B` (default) / `T2V-A14B` | L4 24 GB |
+| [`notebooks/01_text_to_video.ipynb`](notebooks/01_text_to_video.ipynb) | Generate a 2–8 second video from a text prompt (optionally from an image) | `Wan2.2-TI2V-5B` (default) / `T2V-A14B` | L4 24 GB |
 | [`notebooks/02_character_replace.ipynb`](notebooks/02_character_replace.ipynb) | Replace the person in an input video with your character image, preserving motion + lighting | `Wan2.2-Animate-14B` | L4 24 GB / A100 40 GB |
 
 ---
@@ -64,6 +64,21 @@ alphabetically.
 ### Notebook 01 (text-to-video) takes no input files
 
 It only needs a text prompt (edited in cell 4 of the notebook). No Drive inputs required.
+
+### Duration control
+
+Both notebooks include a **`FRAME_NUM`** setting to control output video length.
+The frame count must follow `4k+1` (Wan 2.2 renders at 16 fps):
+
+| `FRAME_NUM` | Duration |
+|---|---|
+| 33 | ~2 sec |
+| 49 | ~3 sec |
+| 65 | ~4 sec |
+| **81** | **~5 sec (default)** |
+| 97 | ~6 sec |
+| 113 | ~7 sec |
+| 129 | ~8 sec |
 
 ### Re-using an existing download
 
@@ -122,7 +137,9 @@ After evaluating current (April 2026) open-source options, Wan 2.2 is the best f
 video-chef/
 ├── notebooks/
 │   ├── 01_text_to_video.ipynb       # Wan 2.2 TI2V-5B / T2V-A14B
-│   └── 02_character_replace.ipynb   # Wan 2.2 Animate-14B (replace mode)
+│   ├── 02_character_replace.ipynb   # Wan 2.2 Animate-14B (replace mode)
+│   ├── CHARACTER_REPLACE_GUIDE.md   # How to prepare inputs for character replacement
+│   └── build_notebooks.py          # Script to regenerate notebooks with valid JSON
 ├── README.md
 ├── VSCODE_SETUP.md                  # Running notebooks from VS Code
 └── .gitignore
